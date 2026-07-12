@@ -286,6 +286,7 @@
   </div>
 
   <div class="btn-row">
+    <button class="btn" id="soundBtn" onclick="toggleSound()">🔊 音效</button>
     <button class="btn" onclick="showHelp()">📖 说明</button>
     <button class="btn danger" onclick="resetMerit()">🔄 重修</button>
   </div>
@@ -325,6 +326,8 @@
   var comboTimeout = null;
   var toastTimer = null;
   var achievements = JSON.parse(localStorage.getItem('cyber-muyu-achievements') || '[]');
+  var audioCtx = null;
+  var soundOn = localStorage.getItem('cyber-muyu-sound') !== 'off';
 
   // ====== 等级系统 ======
   var levels = [
@@ -365,9 +368,70 @@
     }
   }
 
+  // ====== 音效 ======
+  function initAudio() {
+    if (audioCtx) return;
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+  }
+
+  function playKnock() {
+    if (!soundOn || !audioCtx) return;
+    try {
+      var t = audioCtx.currentTime;
+      // 基础频率随连击微调，高连击更高亢
+      var baseFreq = combo >= 50 ? 350 : combo >= 20 ? 280 : combo >= 10 ? 240 : 200;
+      var freq = baseFreq + Math.random() * 30;
+
+      // 主音色：短促正弦波模拟木鱼声
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.5, t + 0.06);
+
+      var vol = combo >= 50 ? 0.5 : combo >= 20 ? 0.4 : combo >= 10 ? 0.35 : 0.3;
+      gain.gain.setValueAtTime(vol, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(t);
+      osc.stop(t + 0.08);
+
+      // 叠加噪声层模拟木头质感
+      var bufferSize = audioCtx.sampleRate * 0.05;
+      var buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      var data = buffer.getChannelData(0);
+      for (var i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.15));
+      }
+      var noise = audioCtx.createBufferSource();
+      var noiseGain = audioCtx.createGain();
+      noise.buffer = buffer;
+      noiseGain.gain.setValueAtTime(0.15, t);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+      noise.connect(noiseGain);
+      noiseGain.connect(audioCtx.destination);
+      noise.start(t);
+      noise.stop(t + 0.05);
+    } catch(e) {}
+  }
+
+  function toggleSound() {
+    soundOn = !soundOn;
+    localStorage.setItem('cyber-muyu-sound', soundOn ? 'on' : 'off');
+    var btn = document.getElementById('soundBtn');
+    btn.textContent = soundOn ? '🔊 音效' : '🔇 静音';
+  }
+  window.toggleSound = toggleSound;
+
   // ====== 敲击 ======
   function tap(e) {
     e.preventDefault();
+
+    // 初始化音频（浏览器要求用户交互后才能播放声音）
+    initAudio();
+
     var now = Date.now();
 
     // 连击判断（1.5秒内）
@@ -396,6 +460,7 @@
 
     // 动画
     animateTap(e);
+    playKnock();
     updateUI();
 
     // 成就检查
@@ -593,6 +658,10 @@
   });
 
   // ====== 初始化 ======
+  // 音效按钮初始状态
+  var sBtn = document.getElementById('soundBtn');
+  if (sBtn) sBtn.textContent = soundOn ? '🔊 音效' : '🔇 静音';
+
   updateLevelUI();
   meritCount.textContent = merit;
   comboCount.textContent = '0';

@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🪈 赛博木鱼 · 电子功德</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --gold: #f5c842;
+    --gold-dim: #8a7030;
+    --red: #c0392b;
+    --text: #ccc;
+    --dim: #555;
+    --panel: #14141f;
+    --border: #222;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    font-family: 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    background-image:
+      radial-gradient(circle at 50% 40%, rgba(245,200,66,0.04) 0%, transparent 60%),
+      radial-gradient(circle at 50% 100%, rgba(192,57,43,0.03) 0%, transparent 40%);
+  }
+
+  .app {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 20px 40px;
+  }
+
+  /* 顶部 */
+  .header {
+    text-align: center; margin-bottom: 8px;
+  }
+  .header .title {
+    font-size: 22px; font-weight: bold; color: var(--gold);
+    letter-spacing: 3px;
+    text-shadow: 0 0 20px rgba(245,200,66,0.3);
+  }
+  .header .sub {
+    font-size: 10px; color: var(--dim); letter-spacing: 2px; margin-top: 2px;
+  }
+
+  /* 状态栏 */
+  .stats-row {
+    display: flex; justify-content: center; gap: 24px;
+    margin: 12px 0 20px;
+  }
+  .stat {
+    text-align: center;
+  }
+  .stat .val {
+    font-size: 26px; font-weight: bold; color: #fff;
+    transition: transform 0.15s;
+  }
+  .stat .val.pulse { transform: scale(1.2); color: var(--gold); }
+  .stat .lbl { font-size: 10px; color: var(--dim); letter-spacing: 1px; }
+
+  /* 木鱼主体 */
+  .muyu-wrapper {
+    position: relative;
+    width: 200px; height: 200px;
+    margin: 8px 0 20px;
+    cursor: pointer;
+  }
+  .muyu-glow {
+    position: absolute; top: 50%; left: 50%;
+    width: 180px; height: 180px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(245,200,66,0.15) 0%, transparent 70%);
+    pointer-events: none;
+    transition: all 0.15s;
+  }
+  .muyu-glow.active {
+    width: 220px; height: 220px;
+    background: radial-gradient(circle, rgba(245,200,66,0.35) 0%, rgba(245,200,66,0.1) 50%, transparent 70%);
+  }
+  .muyu {
+    position: absolute; top: 50%; left: 50%;
+    width: 160px; height: 160px;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(145deg, #3d2b0a, #1a0f02);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 80px;
+    box-shadow:
+      0 0 40px rgba(245,200,66,0.2),
+      0 8px 30px rgba(0,0,0,0.5),
+      inset 0 2px 4px rgba(255,255,255,0.05);
+    border: 3px solid #4a3510;
+    transition: transform 0.08s ease-out, box-shadow 0.08s;
+  }
+  .muyu:active, .muyu.tapped {
+    transform: translate(-50%, -50%) scale(0.88);
+    box-shadow:
+      0 0 80px rgba(245,200,66,0.5),
+      0 4px 15px rgba(0,0,0,0.5),
+      inset 0 2px 4px rgba(255,255,255,0.05);
+  }
+  .muyu .inner {
+    width: 50px; height: 50px;
+    background: #1a0f02;
+    border-radius: 50%;
+    border: 2px solid #5a4015;
+  }
+
+  /* 敲击涟漪 */
+  .ripple {
+    position: absolute; top: 50%; left: 50%;
+    width: 0; height: 0;
+    border-radius: 50%;
+    background: rgba(245,200,66,0.3);
+    transform: translate(-50%, -50%);
+    animation: rippleOut 0.6s ease-out forwards;
+    pointer-events: none;
+  }
+  @keyframes rippleOut {
+    0%   { width: 0; height: 0; opacity: 1; }
+    100% { width: 250px; height: 250px; opacity: 0; }
+  }
+
+  /* 飘出文字 */
+  .float-text {
+    position: absolute;
+    pointer-events: none;
+    font-weight: bold; font-size: 18px; color: var(--gold);
+    animation: floatUp 1s ease-out forwards;
+    white-space: nowrap;
+    z-index: 10;
+  }
+  @keyframes floatUp {
+    0%   { transform: translate(-50%, 0) scale(0.5); opacity: 1; }
+    60%  { opacity: 0.9; }
+    100% { transform: translate(-50%, -120px) scale(1.3); opacity: 0; }
+  }
+
+  /* 连击提示 */
+  .combo-hint {
+    position: absolute; top: 60%; left: 50%;
+    transform: translate(-50%, 0);
+    font-size: 14px; color: var(--gold);
+    pointer-events: none;
+    opacity: 0;
+    transition: all 0.3s;
+    letter-spacing: 2px;
+    white-space: nowrap;
+  }
+  .combo-hint.show { opacity: 1; animation: comboPulse 0.6s ease-out; }
+  @keyframes comboPulse {
+    0%   { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
+    50%  { transform: translate(-50%, -10px) scale(1.3); opacity: 1; }
+    100% { transform: translate(-50%, -20px) scale(1); opacity: 0; }
+  }
+
+  /* 进度条 */
+  .level-bar-wrap {
+    width: 100%; max-width: 280px;
+    background: #111; border-radius: 20px; height: 8px;
+    margin: 0 0 4px; overflow: hidden; border: 1px solid #222;
+  }
+  .level-bar {
+    height: 100%; background: linear-gradient(90deg, var(--gold-dim), var(--gold));
+    border-radius: 20px; transition: width 0.3s;
+  }
+  .level-info {
+    font-size: 10px; color: var(--dim); letter-spacing: 1px; margin-bottom: 16px;
+    display: flex; gap: 16px;
+  }
+
+  /* 按钮 */
+  .btn-row { display: flex; gap: 10px; margin-bottom: 8px; }
+  .btn {
+    padding: 8px 18px; border-radius: 20px; border: 1px solid var(--border);
+    background: var(--panel); color: var(--text); font-family: inherit;
+    font-size: 12px; cursor: pointer; letter-spacing: 1px;
+    transition: all 0.2s;
+  }
+  .btn:hover { border-color: var(--gold); color: var(--gold); }
+  .btn.danger { border-color: #402020; color: #a55; }
+  .btn.danger:hover { border-color: var(--red); }
+
+  /* 成就弹窗 */
+  .toast {
+    position: fixed; top: 50%; left: 50%; z-index: 100;
+    transform: translate(-50%, -50%) scale(0);
+    background: var(--panel); border: 2px solid var(--gold);
+    border-radius: 16px; padding: 24px 28px;
+    text-align: center; pointer-events: none;
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 0 60px rgba(245,200,66,0.3);
+  }
+  .toast.show {
+    transform: translate(-50%, -50%) scale(1);
+    animation: toastIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), toastOut 0.3s 1.8s ease-out forwards;
+  }
+  @keyframes toastIn {
+    0% { transform: translate(-50%, -50%) scale(0) rotate(-10deg); }
+    100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+  }
+  @keyframes toastOut {
+    100% { transform: translate(-50%, -50%) scale(0) rotate(10deg); opacity: 0; }
+  }
+  .toast .icon { font-size: 48px; }
+  .toast .msg { font-size: 16px; color: var(--gold); margin-top: 8px; letter-spacing: 2px; font-weight: bold; }
+  .toast .sub { font-size: 11px; color: var(--dim); margin-top: 4px; }
+
+  /* 粒子爆发 */
+  .burst {
+    position: fixed; pointer-events: none; z-index: 99;
+    animation: burstPop 0.8s ease-out forwards;
+    font-size: 24px;
+  }
+  @keyframes burstPop {
+    0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+  }
+
+  @media (max-width: 400px) {
+    .muyu-wrapper { width: 170px; height: 170px; }
+    .muyu { width: 140px; height: 140px; font-size: 64px; }
+    .muyu .inner { width: 40px; height: 40px; }
+    .stats-row { gap: 16px; }
+    .stat .val { font-size: 22px; }
+    .header .title { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <div class="title">🪈 赛 博 木 鱼</div>
+    <div class="sub">CYBER MUYU · 电子功德 v2.0</div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat">
+      <div class="lbl">🔥 连击</div>
+      <div class="val" id="comboCount">0</div>
+    </div>
+    <div class="stat">
+      <div class="lbl">☸️ 功德</div>
+      <div class="val" id="meritCount">0</div>
+    </div>
+    <div class="stat">
+      <div class="lbl">🏆 等级</div>
+      <div class="val" id="levelDisplay">1</div>
+    </div>
+  </div>
+
+  <div class="muyu-wrapper" id="muyuWrapper">
+    <div class="muyu-glow" id="muyuGlow"></div>
+    <div class="muyu" id="muyu">🪈</div>
+    <div class="combo-hint" id="comboHint"></div>
+  </div>
+
+  <div class="level-bar-wrap">
+    <div class="level-bar" id="levelBar" style="width:0%"></div>
+  </div>
+  <div class="level-info">
+    <span id="levelName">凡人</span>
+    <span id="levelNext">→ 下一级还需 10 功德</span>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn" onclick="showHelp()">📖 说明</button>
+    <button class="btn danger" onclick="resetMerit()">🔄 重修</button>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <div class="icon" id="toastIcon"></div>
+  <div class="msg" id="toastMsg"></div>
+  <div class="sub" id="toastSub"></div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ====== DOM ======
+  var muyu = document.getElementById('muyu');
+  var muyuWrapper = document.getElementById('muyuWrapper');
+  var muyuGlow = document.getElementById('muyuGlow');
+  var comboCount = document.getElementById('comboCount');
+  var meritCount = document.getElementById('meritCount');
+  var levelDisplay = document.getElementById('levelDisplay');
+  var levelBar = document.getElementById('levelBar');
+  var levelName = document.getElementById('levelName');
+  var levelNext = document.getElementById('levelNext');
+  var comboHint = document.getElementById('comboHint');
+  var toast = document.getElementById('toast');
+  var toastIcon = document.getElementById('toastIcon');
+  var toastMsg = document.getElementById('toastMsg');
+  var toastSub = document.getElementById('toastSub');
+
+  // ====== 状态 ======
+  var merit = parseInt(localStorage.getItem('cyber-muyu-merit') || '0', 10);
+  var combo = 0;
+  var maxCombo = parseInt(localStorage.getItem('cyber-muyu-maxcombo') || '0', 10);
+  var lastTapTime = 0;
+  var comboTimeout = null;
+  var toastTimer = null;
+  var achievements = JSON.parse(localStorage.getItem('cyber-muyu-achievements') || '[]');
+
+  // ====== 等级系统 ======
+  var levels = [
+    { name: '凡人', min: 0 },
+    { name: '小沙弥', min: 10 },
+    { name: '扫地僧', min: 50 },
+    { name: '木鱼行者', min: 100 },
+    { name: '大德高僧', min: 300 },
+    { name: '方丈', min: 600 },
+    { name: '罗汉', min: 1000 },
+    { name: '菩萨', min: 2000 },
+    { name: '佛祖', min: 5000 },
+    { name: '赛博佛祖', min: 10000 },
+    { name: '硅基释迦牟尼', min: 20000 },
+    { name: '量子涅槃', min: 50000 },
+  ];
+
+  function getLevel() {
+    for (var i = levels.length - 1; i >= 0; i--) {
+      if (merit >= levels[i].min) return { data: levels[i], index: i };
+    }
+    return { data: levels[0], index: 0 };
+  }
+
+  function updateLevelUI() {
+    var lv = getLevel();
+    var next = levels[lv.index + 1];
+    levelDisplay.textContent = lv.index + 1;
+    levelName.textContent = lv.data.name;
+    if (next) {
+      var range = next.min - lv.data.min;
+      var progress = ((merit - lv.data.min) / range) * 100;
+      levelBar.style.width = Math.min(progress, 100) + '%';
+      levelNext.textContent = '→ ' + next.name + '还需 ' + (next.min - merit) + ' 功德';
+    } else {
+      levelBar.style.width = '100%';
+      levelNext.textContent = '🏆 已达最高境界';
+    }
+  }
+
+  // ====== 敲击 ======
+  function tap(e) {
+    e.preventDefault();
+    var now = Date.now();
+
+    // 连击判断（1.5秒内）
+    if (now - lastTapTime < 1500) {
+      combo++;
+      if (combo > maxCombo) {
+        maxCombo = combo;
+        localStorage.setItem('cyber-muyu-maxcombo', maxCombo);
+      }
+    } else {
+      combo = 1;
+    }
+    lastTapTime = now;
+
+    // 清之前的连击计时器
+    if (comboTimeout) clearTimeout(comboTimeout);
+    comboTimeout = setTimeout(function() {
+      combo = 0;
+      comboCount.classList.remove('pulse');
+      updateComboUI();
+    }, 1500);
+
+    // 功德+1
+    merit++;
+    localStorage.setItem('cyber-muyu-merit', merit);
+
+    // 动画
+    animateTap(e);
+    updateUI();
+
+    // 成就检查
+    checkAchievements();
+  }
+
+  function animateTap(e) {
+    // 木鱼缩放
+    muyu.classList.add('tapped');
+    setTimeout(function() { muyu.classList.remove('tapped'); }, 80);
+
+    // 光晕
+    muyuGlow.classList.add('active');
+    setTimeout(function() { muyuGlow.classList.remove('active'); }, 150);
+
+    // 涟漪
+    var ripple = document.createElement('div');
+    ripple.className = 'ripple';
+    muyuWrapper.appendChild(ripple);
+    setTimeout(function() { ripple.remove(); }, 600);
+
+    // 飘字
+    var text = combo > 1 ? '+' + combo : '+1';
+    var colors = ['#f5c842', '#ff6b6b', '#48dbfb', '#ff9ff3', '#feca57', '#54a0ff'];
+    var floatEl = document.createElement('div');
+    floatEl.className = 'float-text';
+    floatEl.textContent = text;
+    if (combo >= 50) floatEl.textContent = '💥 ' + text + ' 💥';
+    else if (combo >= 20) floatEl.textContent = '✨ ' + text;
+    floatEl.style.color = colors[Math.floor(Math.random() * colors.length)];
+    floatEl.style.left = (50 + (Math.random() - 0.5) * 40) + '%';
+    floatEl.style.top = (50 + (Math.random() - 0.5) * 30) + '%';
+
+    if (combo >= 30) floatEl.style.fontSize = '28px';
+    else if (combo >= 10) floatEl.style.fontSize = '22px';
+
+    muyuWrapper.appendChild(floatEl);
+    setTimeout(function() { floatEl.remove(); }, 1000);
+
+    // 连击提示
+    if (combo === 10) showComboHint('十连击！🙏');
+    if (combo === 20) showComboHint('二十连击！🔥');
+    if (combo === 30) showComboHint('三十连击！⚡');
+    if (combo === 50) showComboHint('五十连击！！💥');
+    if (combo === 100) showComboHint('百连击！！！🌟');
+
+    // 粒子爆发（高连击时）
+    if (combo > 0 && combo % 10 === 0) {
+      spawnBurst(e);
+    }
+  }
+
+  function showComboHint(msg) {
+    comboHint.textContent = msg;
+    comboHint.classList.remove('show');
+    void comboHint.offsetHeight;
+    comboHint.classList.add('show');
+    setTimeout(function() { comboHint.classList.remove('show'); }, 600);
+  }
+
+  function spawnBurst(e) {
+    var emojis = ['✨', '🌟', '💫', '⭐', '🔥', '🙏', '💰', '🎉'];
+    var count = Math.min(combo, 20);
+    for (var i = 0; i < count; i++) {
+      var p = document.createElement('div');
+      p.className = 'burst';
+      p.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      p.style.left = (e.clientX || (window.innerWidth / 2)) + 'px';
+      p.style.top = (e.clientY || (window.innerHeight / 2)) + 'px';
+      p.style.setProperty('--dx', (Math.random() - 0.5) * 200 + 'px');
+      p.style.setProperty('--dy', (Math.random() - 0.5) * 200 - 50 + 'px');
+      p.style.animationDuration = (Math.random() * 0.5 + 0.5) + 's';
+      document.body.appendChild(p);
+      setTimeout(function() { p.remove(); }, 1000);
+    }
+  }
+
+  function updateUI() {
+    // 计数器
+    meritCount.textContent = merit;
+    meritCount.classList.add('pulse');
+    setTimeout(function() { meritCount.classList.remove('pulse'); }, 150);
+    updateComboUI();
+    updateLevelUI();
+
+    // 标题彩蛋
+    var title = document.querySelector('.header .title');
+    if (merit >= 10000) title.textContent = '🪈 赛 博 佛 祖';
+    else if (merit >= 5000) title.textContent = '🪈 电子木鱼·高僧版';
+    else if (merit >= 1000) title.textContent = '🪈 木鱼重度用户';
+    else title.textContent = '🪈 赛 博 木 鱼';
+  }
+
+  function updateComboUI() {
+    comboCount.textContent = combo;
+    if (combo >= 10) comboCount.style.color = '#ff6b6b';
+    else if (combo >= 5) comboCount.style.color = '#feca57';
+    else comboCount.style.color = '#fff';
+  }
+
+  // ====== 成就系统 ======
+  var achievementDefs = [
+    { id: 'first', at: 1, icon: '🙏', msg: '初入佛门', sub: '敲下第一声木鱼，功德+1' },
+    { id: 'ten', at: 10, icon: '📿', msg: '初窥门径', sub: '累积 10 功德，获得念珠一串' },
+    { id: 'fifty', at: 50, icon: '🔔', msg: '晨钟暮鼓', sub: '累积 50 功德，寺院的钟被你敲响了' },
+    { id: 'hundred', at: 100, icon: '🪷', msg: '莲花盛开', sub: '累积 100 功德！佛祖发来好友申请 🙏' },
+    { id: 'fivehundred', at: 500, icon: '🏯', msg: '寺庙住持', sub: '累积 500 功德，你可以当住持了' },
+    { id: 'thousand', at: 1000, icon: '🌟', msg: '功德无量', sub: '累积 1000 功德，南天门为你打开' },
+    { id: 'fivethousand', at: 5000, icon: '💎', msg: '立地成佛', sub: '5000 功德！佛祖决定退位让贤' },
+    { id: 'tenthousand', at: 10000, icon: '🚀', msg: '赛博飞升', sub: '10000 功德！你已超越三界，直达 GitHub' },
+  ];
+
+  function checkAchievements() {
+    for (var i = 0; i < achievementDefs.length; i++) {
+      var a = achievementDefs[i];
+      if (merit >= a.at && achievements.indexOf(a.id) === -1) {
+        achievements.push(a.id);
+        localStorage.setItem('cyber-muyu-achievements', JSON.stringify(achievements));
+        showToast(a.icon, a.msg, a.sub);
+        break; // 一次只弹一个
+      }
+    }
+  }
+
+  function showToast(icon, msg, sub) {
+    if (toastTimer) clearTimeout(toastTimer);
+    toastIcon.textContent = icon;
+    toastMsg.textContent = msg;
+    toastSub.textContent = sub;
+    toast.classList.remove('show');
+    void toast.offsetHeight;
+    toast.classList.add('show');
+    toastTimer = setTimeout(function() {
+      toast.classList.remove('show');
+    }, 2200);
+  }
+
+  // ====== 按钮 ======
+  window.resetMerit = function() {
+    if (!confirm('确定要重修吗？\n\n所有功德将被清零，等级回到凡人。\n不过……施主，放下也是一种修行。')) return;
+    merit = 0;
+    combo = 0;
+    maxCombo = 0;
+    achievements = [];
+    localStorage.removeItem('cyber-muyu-merit');
+    localStorage.removeItem('cyber-muyu-maxcombo');
+    localStorage.removeItem('cyber-muyu-achievements');
+    updateLevelUI();
+    meritCount.textContent = '0';
+    comboCount.textContent = '0';
+    comboCount.style.color = '#fff';
+    showToast('🔄', '功德清零', '施主重新开始修行，善哉善哉');
+  };
+
+  window.showHelp = function() {
+    var info = [
+      '🪈 点一下木鱼 = 功德+1',
+      '🔥 1.5秒内连续点击 = 连击',
+      '🏆 连击越高飘字越大',
+      '📊 功德累积自动升级',
+      '',
+      '🏅 成就里程碑：',
+      '10 · 50 · 100 · 500 · 1000',
+      '5000 · 10000',
+      '',
+      '当前最高连击记录：' + maxCombo,
+    ];
+    alert(info.join('\n'));
+  };
+
+  // ====== 事件 ======
+  muyu.addEventListener('pointerdown', tap);
+  muyuWrapper.addEventListener('pointerdown', function(e) {
+    if (e.target === muyu || e.target === muyuWrapper) tap(e);
+  });
+
+  // 防止双击缩放
+  document.addEventListener('dblclick', function(e) {
+    if (e.target.closest('.muyu-wrapper')) e.preventDefault();
+  });
+
+  // ====== 键盘支持 ======
+  document.addEventListener('keydown', function(e) {
+    if (e.code === 'Space' || e.code === 'Enter') {
+      e.preventDefault();
+      // 模拟点击木鱼中心
+      var rect = muyu.getBoundingClientRect();
+      var fakeEvent = {
+        preventDefault: function() {},
+        clientX: rect.left + rect.width / 2,
+        clientY: rect.top + rect.height / 2,
+      };
+      tap(fakeEvent);
+    }
+  });
+
+  // ====== 初始化 ======
+  updateLevelUI();
+  meritCount.textContent = merit;
+  comboCount.textContent = '0';
+
+  // 恢复成就（防止 LocalStorage 丢失导致重新弹窗——不管了，不重弹）
+  // 只在加载时显示当前状态
+  var lv = getLevel();
+  levelDisplay.textContent = lv.index + 1;
+
+})();
+</script>
+</body>
+</html>

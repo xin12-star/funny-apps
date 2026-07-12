@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>赛博木鱼 · 电子功德</title>
+<style>
+  :root {
+    --bg: #1a1410;
+    --gold: #f5c842;
+    --gold-dim: #8a7030;
+    --text: #ccc;
+    --dim: #666;
+    --panel: #241e18;
+    --border: #3a3028;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; min-height: 100dvh; overflow: hidden;
+    user-select: none; -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    background-image:
+      radial-gradient(circle at 50% 35%, rgba(200,150,80,0.06) 0%, transparent 60%),
+      radial-gradient(circle at 50% 100%, rgba(180,130,60,0.04) 0%, transparent 40%);
+  }
+
+  .app {
+    position: relative; width: 100%; max-width: 420px;
+    min-height: 100vh; min-height: 100dvh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 24px 20px 40px;
+  }
+
+  .header { text-align: center; margin-bottom: 8px; }
+  .header .title { font-size: 21px; font-weight: bold; color: var(--gold); letter-spacing: 3px; }
+  .header .sub { font-size: 10px; color: var(--dim); letter-spacing: 2px; margin-top: 2px; }
+
+  /* 状态 */
+  .stats-row { display: flex; justify-content: center; gap: 28px; margin: 14px 0 16px; }
+  .stat { text-align: center; }
+  .stat .val { font-size: 24px; font-weight: bold; color: #fff; transition: transform 0.12s; }
+  .stat .val.pulse { transform: scale(1.25); color: var(--gold); }
+  .stat .lbl { font-size: 10px; color: var(--dim); letter-spacing: 1px; }
+
+  /* ====== 木鱼 ====== */
+  .muyu-wrapper {
+    position: relative; width: 200px; height: 200px;
+    margin: 6px 0 16px; cursor: pointer;
+  }
+  .muyu-glow {
+    position: absolute; top: 50%; left: 50%;
+    width: 160px; height: 160px; border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(245,200,66,0.12) 0%, transparent 70%);
+    pointer-events: none; transition: all 0.12s;
+  }
+  .muyu-glow.active {
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(245,200,66,0.4) 0%, rgba(245,200,66,0.1) 50%, transparent 70%);
+  }
+
+  /* 木鱼主体——参考真实木鱼造型 */
+  .muyu {
+    position: absolute; top: 50%; left: 50%;
+    width: 160px; height: 135px;
+    transform: translate(-50%, -50%);
+    /* 红木色木质渐变 */
+    background:
+      radial-gradient(ellipse at 50% 25%, #b5723a 0%, #8b4513 25%, #6b2f0a 55%, #4a1a04 85%, #2e0e00 100%);
+    /* 木鱼是略扁的椭圆，鱼形——前端略尖后端略圆 */
+    border-radius: 48% 42% 44% 46% / 50% 52% 48% 48%;
+    /* 3D光影 */
+    box-shadow:
+      0 0 60px rgba(200,140,60,0.12),
+      0 14px 40px rgba(0,0,0,0.65),
+      inset 0 4px 12px rgba(255,200,130,0.1),
+      inset 0 -5px 15px rgba(0,0,0,0.55),
+      inset -4px 0 8px rgba(0,0,0,0.2);
+    border: 2px solid #3d1a06;
+    transition: transform 0.06s ease-out, box-shadow 0.06s;
+  }
+  /* 横槽——木鱼最显著的特征 */
+  .muyu::before {
+    content: ''; position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 105px; height: 7px;
+    background: linear-gradient(180deg, #0f0500 0%, #1a0a00 50%, #2a1200 100%);
+    border-radius: 4px;
+    box-shadow:
+      0 1px 0 rgba(255,180,100,0.15),
+      0 -1px 0 rgba(0,0,0,0.4),
+      0 4px 10px rgba(0,0,0,0.5) inset;
+  }
+  /* 两个鱼眼凸起 */
+  .muyu::after {
+    content: ''; position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%) translateY(-32px);
+    width: 60px; height: 14px;
+    background:
+      radial-gradient(circle 8px at 20% 50%, #4a1a04 0%, #2e0e00 100%),
+      radial-gradient(circle 8px at 80% 50%, #4a1a04 0%, #2e0e00 100%);
+    background-size: auto;
+    background-repeat: no-repeat;
+    box-shadow:
+      0 -2px 4px rgba(255,150,80,0.15);
+  }
+  /* 敲击动画 */
+  .muyu:active, .muyu.tapped {
+    transform: translate(-50%, -50%) scale(0.9);
+    box-shadow:
+      0 0 90px rgba(245,200,66,0.45),
+      0 8px 20px rgba(0,0,0,0.7),
+      inset 0 4px 12px rgba(255,200,130,0.1),
+      inset 0 -5px 15px rgba(0,0,0,0.55);
+  }
+
+  /* 涟漪 */
+  .ripple {
+    position: absolute; top: 50%; left: 50%;
+    width: 0; height: 0; border-radius: 50%;
+    background: rgba(245,200,66,0.25);
+    transform: translate(-50%, -50%);
+    animation: rippleOut 0.55s ease-out forwards; pointer-events: none;
+  }
+  @keyframes rippleOut {
+    0%   { width: 0; height: 0; opacity: 1; }
+    100% { width: 240px; height: 240px; opacity: 0; }
+  }
+
+  /* 飘字 */
+  .float-text {
+    position: absolute; pointer-events: none;
+    font-weight: bold; font-size: 18px; color: var(--gold);
+    animation: floatUp 0.9s ease-out forwards;
+    white-space: nowrap; z-index: 10;
+  }
+  @keyframes floatUp {
+    0%   { transform: translate(-50%, 0) scale(0.4); opacity: 1; }
+    60%  { opacity: 0.9; }
+    100% { transform: translate(-50%, -110px) scale(1.3); opacity: 0; }
+  }
+
+  /* 连击提示 */
+  .combo-hint {
+    position: absolute; top: 62%; left: 50%; transform: translate(-50%, 0);
+    font-size: 14px; color: var(--gold); pointer-events: none; opacity: 0;
+    transition: all 0.3s; letter-spacing: 2px; white-space: nowrap;
+  }
+  .combo-hint.show { opacity: 1; animation: comboPulse 0.6s ease-out; }
+  @keyframes comboPulse {
+    0%   { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
+    50%  { transform: translate(-50%, -10px) scale(1.3); opacity: 1; }
+    100% { transform: translate(-50%, -20px) scale(1); opacity: 0; }
+  }
+
+  /* 等级 */
+  .level-bar-wrap {
+    width: 100%; max-width: 280px;
+    background: #111; border-radius: 20px; height: 7px;
+    margin: 0 0 4px; overflow: hidden; border: 1px solid #2a2a2a;
+  }
+  .level-bar {
+    height: 100%; background: linear-gradient(90deg, var(--gold-dim), var(--gold));
+    border-radius: 20px; transition: width 0.3s;
+  }
+  .level-info { font-size: 10px; color: var(--dim); letter-spacing: 1px; margin-bottom: 14px; display: flex; gap: 16px; }
+
+  /* 按钮 */
+  .btn-row { display: flex; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; justify-content: center; }
+  .btn {
+    padding: 7px 14px; border-radius: 20px; border: 1px solid var(--border);
+    background: var(--panel); color: var(--text); font-family: inherit;
+    font-size: 11px; cursor: pointer; letter-spacing: 1px;
+    transition: all 0.2s;
+  }
+  .btn:hover { border-color: var(--gold); color: var(--gold); }
+  .btn.active { border-color: var(--gold); color: #000; background: var(--gold); font-weight: bold; }
+  .btn.danger { border-color: #402020; color: #a55; }
+  .btn.danger:hover { border-color: #c0392b; }
+
+  /* 弹窗 */
+  .toast {
+    position: fixed; top: 50%; left: 50%; z-index: 100;
+    transform: translate(-50%, -50%) scale(0);
+    background: var(--panel); border: 2px solid var(--gold);
+    border-radius: 16px; padding: 24px 28px;
+    text-align: center; pointer-events: none;
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 0 60px rgba(245,200,66,0.3);
+  }
+  .toast.show {
+    transform: translate(-50%, -50%) scale(1);
+    animation: toastIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), toastOut 0.3s 1.8s ease-out forwards;
+  }
+  @keyframes toastIn {
+    0% { transform: translate(-50%, -50%) scale(0) rotate(-10deg); }
+    100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+  }
+  @keyframes toastOut {
+    100% { transform: translate(-50%, -50%) scale(0) rotate(10deg); opacity: 0; }
+  }
+  .toast .icon { font-size: 48px; }
+  .toast .msg { font-size: 16px; color: var(--gold); margin-top: 8px; letter-spacing: 2px; font-weight: bold; }
+  .toast .sub { font-size: 11px; color: var(--dim); margin-top: 4px; }
+
+  /* 粒子 */
+  .burst {
+    position: fixed; pointer-events: none; z-index: 99;
+    animation: burstPop 0.8s ease-out forwards; font-size: 24px;
+  }
+  @keyframes burstPop {
+    0% { transform: translate(0,0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+  }
+
+  @media (max-width: 400px) {
+    .muyu-wrapper { width: 170px; height: 170px; }
+    .muyu { width: 140px; height: 118px; }
+    .muyu::before { width: 90px; height: 6px; }
+    .muyu::after { width: 52px; height: 12px; transform: translate(-50%, -50%) translateY(-27px); }
+    .stats-row { gap: 18px; }
+    .stat .val { font-size: 21px; }
+    .header .title { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <div class="title">赛 博 木 鱼</div>
+    <div class="sub">CYBER MUYU · 电子功德 v2</div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat">
+      <div class="lbl">🔥 连击</div>
+      <div class="val" id="comboCount">0</div>
+    </div>
+    <div class="stat">
+      <div class="lbl">☸️ 功德</div>
+      <div class="val" id="meritCount">0</div>
+    </div>
+    <div class="stat">
+      <div class="lbl">🏆 等级</div>
+      <div class="val" id="levelDisplay">1</div>
+    </div>
+  </div>
+
+  <div class="muyu-wrapper" id="muyuWrapper">
+    <div class="muyu-glow" id="muyuGlow"></div>
+    <div class="muyu" id="muyu"></div>
+    <div class="combo-hint" id="comboHint"></div>
+  </div>
+
+  <div class="level-bar-wrap">
+    <div class="level-bar" id="levelBar" style="width:0%"></div>
+  </div>
+  <div class="level-info">
+    <span id="levelName">凡人</span>
+    <span id="levelNext">→ 下一级还需 10 功德</span>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn" id="soundBtn" onclick="toggleSound()">🔊 音效</button>
+    <button class="btn" id="autoBtn" onclick="toggleAuto()">⏯️ 自动</button>
+    <button class="btn" onclick="showHelp()">📖 说明</button>
+    <button class="btn danger" onclick="resetMerit()">🔄 重修</button>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <div class="icon" id="toastIcon"></div>
+  <div class="msg" id="toastMsg"></div>
+  <div class="sub" id="toastSub"></div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ====== DOM ======
+  var muyu = document.getElementById('muyu');
+  var muyuWrapper = document.getElementById('muyuWrapper');
+  var muyuGlow = document.getElementById('muyuGlow');
+  var comboCount = document.getElementById('comboCount');
+  var meritCount = document.getElementById('meritCount');
+  var levelDisplay = document.getElementById('levelDisplay');
+  var levelBar = document.getElementById('levelBar');
+  var levelName = document.getElementById('levelName');
+  var levelNext = document.getElementById('levelNext');
+  var comboHint = document.getElementById('comboHint');
+  var toast = document.getElementById('toast');
+  var toastIcon = document.getElementById('toastIcon');
+  var toastMsg = document.getElementById('toastMsg');
+  var toastSub = document.getElementById('toastSub');
+
+  // ====== 状态 ======
+  var merit = parseInt(localStorage.getItem('cyber-muyu-merit') || '0', 10);
+  var combo = 0;
+  var maxCombo = parseInt(localStorage.getItem('cyber-muyu-maxcombo') || '0', 10);
+  var lastTapTime = 0;
+  var comboTimeout = null;
+  var toastTimer = null;
+  var achievements = JSON.parse(localStorage.getItem('cyber-muyu-achievements') || '[]');
+  var audioCtx = null;
+  var soundOn = localStorage.getItem('cyber-muyu-sound') !== 'off';
+  var autoOn = false;
+  var autoTimer = null;
+  var soundMode = localStorage.getItem('cyber-muyu-soundmode') || 'classic'; // 'classic' | 'crisp'
+
+  // ====== 等级系统 ======
+  var levels = [
+    { name: '凡人', min: 0 }, { name: '小沙弥', min: 10 }, { name: '扫地僧', min: 50 },
+    { name: '木鱼行者', min: 100 }, { name: '大德高僧', min: 300 }, { name: '方丈', min: 600 },
+    { name: '罗汉', min: 1000 }, { name: '菩萨', min: 2000 }, { name: '佛祖', min: 5000 },
+    { name: '赛博佛祖', min: 10000 }, { name: '硅基释迦牟尼', min: 20000 }, { name: '量子涅槃', min: 50000 },
+  ];
+
+  function getLevel() {
+    for (var i = levels.length - 1; i >= 0; i--) {
+      if (merit >= levels[i].min) return { data: levels[i], index: i };
+    }
+    return { data: levels[0], index: 0 };
+  }
+
+  function updateLevelUI() {
+    var lv = getLevel(), next = levels[lv.index + 1];
+    levelDisplay.textContent = lv.index + 1;
+    levelName.textContent = lv.data.name;
+    if (next) {
+      var range = next.min - lv.data.min;
+      levelBar.style.width = Math.min(((merit - lv.data.min) / range) * 100, 100) + '%';
+      levelNext.textContent = '→ ' + next.name + '还需 ' + (next.min - merit) + ' 功德';
+    } else {
+      levelBar.style.width = '100%';
+      levelNext.textContent = '🏆 已达最高境界';
+    }
+  }
+
+  // ====== 音效引擎 ======
+  function initAudio() {
+    if (audioCtx) return;
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+  }
+
+  function playKnock() {
+    if (!soundOn || !audioCtx) return;
+    try {
+      var t = audioCtx.currentTime;
+
+      // 参考真实木鱼音高：清脆的"笃"声
+      var baseFreq = combo >= 50 ? 680 : combo >= 20 ? 610 : combo >= 10 ? 550 : 500;
+      var freq = baseFreq + (Math.random() - 0.5) * 30;
+      var vol = combo >= 50 ? 0.5 : combo >= 20 ? 0.42 : combo >= 10 ? 0.38 : 0.32;
+
+      if (soundMode === 'crisp') {
+        // === 清脆模式：更短促、更高频 ===
+        freq += 80; vol -= 0.05;
+        var dur1 = 0.04, dur2 = 0.002;
+        var freqDrop = 0.6;
+      } else {
+        // === 经典模式：接近真实木鱼 ===
+        var dur1 = 0.06, dur2 = 0.003;
+        var freqDrop = 0.7;
+      }
+
+      // 第1层：敲击瞬态
+      var clickLen = Math.floor(audioCtx.sampleRate * dur2);
+      var clickBuf = audioCtx.createBuffer(1, clickLen, audioCtx.sampleRate);
+      var cd = clickBuf.getChannelData(0);
+      for (var i = 0; i < clickLen; i++) cd[i] = (Math.random() * 2 - 1) * Math.exp(-i / (clickLen * 0.15));
+      var cs = audioCtx.createBufferSource(); var cg = audioCtx.createGain();
+      cs.buffer = clickBuf; cg.gain.setValueAtTime(vol * 0.5, t);
+      cg.gain.exponentialRampToValueAtTime(0.001, t + 0.004);
+      cs.connect(cg); cg.connect(audioCtx.destination);
+      cs.start(t); cs.stop(t + 0.01);
+
+      // 第2层：主体共鸣
+      for (var j = 0; j < 2; j++) {
+        var osc = audioCtx.createOscillator(); var og = audioCtx.createGain();
+        osc.type = 'sine';
+        var f = j === 0 ? freq : freq * 1.06;
+        osc.frequency.setValueAtTime(f, t);
+        osc.frequency.exponentialRampToValueAtTime(f * freqDrop, t + dur1);
+        og.gain.setValueAtTime(vol * (j === 0 ? 1 : 0.35), t);
+        og.gain.exponentialRampToValueAtTime(0.001, t + dur1);
+        osc.connect(og); og.connect(audioCtx.destination);
+        osc.start(t); osc.stop(t + dur1 + 0.01);
+      }
+
+      // 第3层：木头纹理
+      var texLen = Math.floor(audioCtx.sampleRate * 0.035);
+      var texBuf = audioCtx.createBuffer(1, texLen, audioCtx.sampleRate);
+      var td = texBuf.getChannelData(0);
+      for (var k = 0; k < texLen; k++) td[k] = (Math.random() * 2 - 1) * Math.exp(-k / (texLen * 0.2));
+      var ts = audioCtx.createBufferSource(); var tg = audioCtx.createGain();
+      ts.buffer = texBuf;
+      var tf = audioCtx.createBiquadFilter(); tf.type = 'lowpass';
+      tf.frequency.setValueAtTime(1100, t);
+      tg.gain.setValueAtTime(vol * 0.12, t);
+      tg.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
+      ts.connect(tf); tf.connect(tg); tg.connect(audioCtx.destination);
+      ts.start(t); ts.stop(t + 0.04);
+    } catch(e) {}
+  }
+
+  function toggleSound() {
+    soundOn = !soundOn;
+    localStorage.setItem('cyber-muyu-sound', soundOn ? 'on' : 'off');
+    updateBtnStates();
+  }
+
+  function toggleAuto() {
+    autoOn = !autoOn;
+    if (autoOn) startAuto();
+    else stopAuto();
+    updateBtnStates();
+  }
+
+  function startAuto() {
+    if (autoTimer) clearInterval(autoTimer);
+    autoTimer = setInterval(function() {
+      var rect = muyu.getBoundingClientRect();
+      tap({ preventDefault: function(){}, clientX: rect.left + rect.width/2, clientY: rect.top + rect.height/2 });
+    }, 1200); // 1.2秒一次
+  }
+
+  function stopAuto() {
+    if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+  }
+
+  function updateBtnStates() {
+    var sb = document.getElementById('soundBtn');
+    var ab = document.getElementById('autoBtn');
+    if (sb) sb.textContent = soundOn ? '🔊 音效' : '🔇 静音';
+    if (ab) { ab.textContent = autoOn ? '⏸️ 停止' : '⏯️ 自动'; ab.className = 'btn' + (autoOn ? ' active' : ''); }
+  }
+
+  // ====== 敲击 ======
+  function tap(e) {
+    e.preventDefault();
+    initAudio();
+    var now = Date.now();
+
+    if (now - lastTapTime < 1500) {
+      combo++;
+      if (combo > maxCombo) { maxCombo = combo; localStorage.setItem('cyber-muyu-maxcombo', maxCombo); }
+    } else {
+      combo = 1;
+    }
+    lastTapTime = now;
+
+    if (comboTimeout) clearTimeout(comboTimeout);
+    comboTimeout = setTimeout(function() { combo = 0; comboCount.classList.remove('pulse'); updateComboUI(); }, 1500);
+
+    merit++;
+    localStorage.setItem('cyber-muyu-merit', merit);
+
+    animateTap(e);
+    playKnock();
+    updateUI();
+    checkAchievements();
+  }
+
+  function animateTap(e) {
+    muyu.classList.add('tapped');
+    setTimeout(function() { muyu.classList.remove('tapped'); }, 60);
+
+    muyuGlow.classList.add('active');
+    setTimeout(function() { muyuGlow.classList.remove('active'); }, 130);
+
+    var ripple = document.createElement('div'); ripple.className = 'ripple';
+    muyuWrapper.appendChild(ripple);
+    setTimeout(function() { ripple.remove(); }, 550);
+
+    var text = combo > 1 ? '+' + combo : '+1';
+    var colors = ['#f5c842', '#ff6b6b', '#48dbfb', '#ff9ff3', '#feca57'];
+    var fl = document.createElement('div'); fl.className = 'float-text';
+    fl.textContent = text; fl.style.color = colors[Math.floor(Math.random() * 5)];
+    fl.style.left = (50 + (Math.random() - 0.5) * 35) + '%';
+    fl.style.top = (50 + (Math.random() - 0.5) * 25) + '%';
+    if (combo >= 30) fl.style.fontSize = '26px'; else if (combo >= 10) fl.style.fontSize = '20px';
+    muyuWrapper.appendChild(fl);
+    setTimeout(function() { fl.remove(); }, 900);
+
+    if (combo === 10) showComboHint('十连击！🙏');
+    if (combo === 20) showComboHint('二十连击！🔥');
+    if (combo === 50) showComboHint('五十连击！！💥');
+    if (combo === 100) showComboHint('百连击！！！🌟');
+
+    if (combo > 0 && combo % 10 === 0) spawnBurst(e);
+  }
+
+  function showComboHint(msg) {
+    comboHint.textContent = msg; comboHint.classList.remove('show');
+    void comboHint.offsetHeight; comboHint.classList.add('show');
+    setTimeout(function() { comboHint.classList.remove('show'); }, 600);
+  }
+
+  function spawnBurst(e) {
+    var emojis = ['✨','🌟','💫','⭐','🔥','🙏','💰','🎉'];
+    var count = Math.min(combo, 16);
+    for (var i = 0; i < count; i++) {
+      var p = document.createElement('div'); p.className = 'burst';
+      p.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      p.style.left = (e.clientX || window.innerWidth/2) + 'px';
+      p.style.top = (e.clientY || window.innerHeight/2) + 'px';
+      p.style.setProperty('--dx', (Math.random()-0.5)*180 + 'px');
+      p.style.setProperty('--dy', (Math.random()-0.5)*180 - 40 + 'px');
+      p.style.animationDuration = (Math.random()*0.4 + 0.4) + 's';
+      document.body.appendChild(p);
+      setTimeout(function() { p.remove(); }, 800);
+    }
+  }
+
+  function updateUI() {
+    meritCount.textContent = merit;
+    meritCount.classList.add('pulse');
+    setTimeout(function() { meritCount.classList.remove('pulse'); }, 150);
+    updateComboUI();
+    updateLevelUI();
+    var t = document.querySelector('.header .title');
+    if (merit >= 10000) t.textContent = '赛 博 佛 祖';
+    else if (merit >= 5000) t.textContent = '电子木鱼·高僧版';
+    else t.textContent = '赛 博 木 鱼';
+  }
+
+  function updateComboUI() {
+    comboCount.textContent = combo;
+    if (combo >= 10) comboCount.style.color = '#ff6b6b';
+    else if (combo >= 5) comboCount.style.color = '#feca57';
+    else comboCount.style.color = '#fff';
+  }
+
+  // ====== 成就 ======
+  var achievementDefs = [
+    { id:'first', at:1, icon:'🙏', msg:'初入佛门', sub:'敲下第一声木鱼' },
+    { id:'ten', at:10, icon:'📿', msg:'初窥门径', sub:'累积 10 功德' },
+    { id:'fifty', at:50, icon:'🔔', msg:'晨钟暮鼓', sub:'累积 50 功德' },
+    { id:'hundred', at:100, icon:'🪷', msg:'莲花盛开', sub:'100 功德！佛祖发来好友申请' },
+    { id:'fivehundred', at:500, icon:'🏯', msg:'寺庙住持', sub:'500 功德，你可以当住持了' },
+    { id:'thousand', at:1000, icon:'🌟', msg:'功德无量', sub:'1000 功德，南天门为你打开' },
+    { id:'fivethousand', at:5000, icon:'💎', msg:'立地成佛', sub:'5000 功德！佛祖决定退位让贤' },
+    { id:'tenthousand', at:10000, icon:'🚀', msg:'赛博飞升', sub:'10000 功德！超越三界' },
+  ];
+
+  function checkAchievements() {
+    for (var i = 0; i < achievementDefs.length; i++) {
+      var a = achievementDefs[i];
+      if (merit >= a.at && achievements.indexOf(a.id) === -1) {
+        achievements.push(a.id);
+        localStorage.setItem('cyber-muyu-achievements', JSON.stringify(achievements));
+        showToast(a.icon, a.msg, a.sub);
+        break;
+      }
+    }
+  }
+
+  function showToast(icon, msg, sub) {
+    if (toastTimer) clearTimeout(toastTimer);
+    toastIcon.textContent = icon; toastMsg.textContent = msg; toastSub.textContent = sub;
+    toast.classList.remove('show'); void toast.offsetHeight; toast.classList.add('show');
+    toastTimer = setTimeout(function() { toast.classList.remove('show'); }, 2200);
+  }
+
+  // ====== 按钮 ======
+  window.resetMerit = function() {
+    if (!confirm('确定要重修吗？功德清零，等级回到凡人。')) return;
+    merit = 0; combo = 0; maxCombo = 0; achievements = [];
+    localStorage.removeItem('cyber-muyu-merit');
+    localStorage.removeItem('cyber-muyu-maxcombo');
+    localStorage.removeItem('cyber-muyu-achievements');
+    stopAuto(); autoOn = false;
+    updateLevelUI(); meritCount.textContent = '0'; comboCount.textContent = '0'; comboCount.style.color = '#fff';
+    updateBtnStates();
+    showToast('🔄', '功德清零', '施主重新开始修行');
+  };
+
+  window.showHelp = function() {
+    alert([
+      '🪵 点击木鱼 = 功德+1',
+      '🔥 1.5秒内连点 = 连击',
+      '⏯️ 自动模式 = 每秒敲1次',
+      '⌨️ 按空格键也能敲',
+      '',
+      '当前最高连击：' + maxCombo,
+      '音效模式：' + (soundMode === 'classic' ? '经典木鱼' : '清脆木鱼'),
+    ].join('\n'));
+  };
+
+  window.toggleSound = toggleSound;
+  window.toggleAuto = toggleAuto;
+
+  // ====== 事件 ======
+  muyuWrapper.addEventListener('pointerdown', function(e) {
+    if (e.target === muyu || e.target.closest('.muyu') || e.target === muyuWrapper) tap(e);
+  });
+
+  document.addEventListener('dblclick', function(e) {
+    if (e.target.closest('.muyu-wrapper')) e.preventDefault();
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.code === 'Space' || e.code === 'Enter') {
+      e.preventDefault();
+      var r = muyu.getBoundingClientRect();
+      tap({ preventDefault: function(){}, clientX: r.left+r.width/2, clientY: r.top+r.height/2 });
+    }
+  });
+
+  // ====== 初始化 ======
+  updateBtnStates();
+  updateLevelUI();
+  meritCount.textContent = merit;
+  comboCount.textContent = '0';
+  var lv = getLevel(); levelDisplay.textContent = lv.index + 1;
+})();
+</script>
+</body>
+</html>

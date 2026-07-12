@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔮 量子命理 · AI玄学研究院</title>
+<style>
+  :root {
+    --bg: #0d0a14;
+    --panel: #1a1326;
+    --border: #2d1f3d;
+    --text: #d4c5e0;
+    --gold: #f0c060;
+    --gold-bright: #ffd700;
+    --red: #e04060;
+    --red-bright: #ff6b81;
+    --accent: #c084fc;
+    --green: #4ade80;
+    --dim: #6b5b7a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    font-family: 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image:
+      radial-gradient(ellipse at 20% 10%, rgba(192,132,252,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 90%, rgba(240,192,96,0.05) 0%, transparent 50%);
+  }
+
+  /* 八卦背景装饰 */
+  .bg-symbols {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    overflow: hidden;
+  }
+  .bg-symbols span {
+    position: absolute;
+    font-size: 60px;
+    opacity: 0.03;
+    color: var(--gold);
+    animation: drift linear infinite;
+  }
+  @keyframes drift {
+    0%   { transform: translateY(105vh) rotate(0deg); }
+    100% { transform: translateY(-10vh) rotate(360deg); }
+  }
+
+  /* 粒子 */
+  .particles {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  }
+  .particle {
+    position: absolute;
+    background: var(--gold);
+    border-radius: 50%;
+    animation: floatUp linear infinite;
+    opacity: 0;
+  }
+  @keyframes floatUp {
+    0%   { transform: translateY(100vh) scale(0); opacity: 0; }
+    10%  { opacity: 0.5; }
+    90%  { opacity: 0.1; }
+    100% { transform: translateY(-10vh) scale(1.5); opacity: 0; }
+  }
+
+  .container {
+    position: relative; z-index: 1;
+    width: 520px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 36px 32px 32px;
+    box-shadow: 0 0 80px rgba(192,132,252,0.08), 0 12px 40px rgba(0,0,0,0.6);
+  }
+
+  /* 顶部 */
+  .header {
+    text-align: center; margin-bottom: 28px;
+  }
+  .header .icon { font-size: 48px; display: block; margin-bottom: 8px; }
+  .header .title {
+    font-size: 20px; font-weight: bold;
+    background: linear-gradient(135deg, var(--gold), var(--red-bright), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 2px;
+  }
+  .header .subtitle {
+    font-size: 11px; color: var(--dim); margin-top: 4px; letter-spacing: 1px;
+  }
+
+  /* 表单 */
+  .form-group { margin-bottom: 16px; }
+  .form-group label {
+    display: block; font-size: 12px; color: var(--dim);
+    margin-bottom: 6px; letter-spacing: 1px;
+  }
+  .form-group input {
+    width: 100%; padding: 12px 16px;
+    background: #0f0a18;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: #fff; font-size: 15px; font-family: inherit;
+    outline: none; caret-color: var(--accent);
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus { border-color: var(--accent); }
+  .form-group input::placeholder { color: #3a2a4a; }
+
+  .form-row { display: flex; gap: 12px; }
+  .form-row .form-group { flex: 1; }
+
+  .btn-fortune {
+    width: 100%; padding: 14px;
+    margin-top: 6px;
+    background: linear-gradient(135deg, #8b0000, #c0392b, #e74c3c);
+    border: none; border-radius: 12px;
+    color: var(--gold-bright); font-size: 17px; font-weight: bold;
+    font-family: inherit; letter-spacing: 2px; cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 20px rgba(224,64,96,0.25);
+  }
+  .btn-fortune:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 28px rgba(224,64,96,0.4);
+  }
+  .btn-fortune:active { transform: scale(0.97); }
+
+  /* ====== 弹窗 ====== */
+  .overlay {
+    display: none; position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,0.82);
+    justify-content: center; align-items: center;
+    backdrop-filter: blur(6px);
+  }
+  .overlay.active { display: flex; }
+
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 18px; padding: 28px 30px 24px;
+    width: 500px;
+    max-height: 92vh;
+    overflow-y: auto;
+    box-shadow: 0 0 100px rgba(192,132,252,0.12);
+    animation: modalIn 0.35s ease-out;
+  }
+  @keyframes modalIn {
+    from { transform: scale(0.9) translateY(20px); opacity: 0; }
+    to   { transform: scale(1) translateY(0); opacity: 1; }
+  }
+
+  .modal-title {
+    font-size: 14px; color: var(--gold);
+    letter-spacing: 1px; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px; min-height: 24px;
+  }
+  .spinner {
+    display: inline-block; flex-shrink: 0;
+    width: 16px; height: 16px; border: 2px solid var(--border);
+    border-top-color: var(--gold); border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .log-area {
+    background: #0f0a18;
+    border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px 16px;
+    height: 140px; overflow-y: auto;
+    font-size: 11px; line-height: 1.8; color: var(--dim);
+    margin-bottom: 14px;
+    font-family: 'Courier New', 'Consolas', monospace;
+  }
+  .log-area .line {
+    opacity: 0; animation: fadeInLine 0.3s forwards;
+  }
+  @keyframes fadeInLine { to { opacity: 1; } }
+
+  .progress-wrap {
+    background: #0f0a18;
+    border: 1px solid var(--border);
+    border-radius: 6px; height: 20px; overflow: hidden; margin-bottom: 6px;
+  }
+  .progress-bar {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--red), var(--gold), var(--accent));
+    transition: width 0.15s linear;
+    position: relative;
+  }
+  .progress-bar::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    animation: shimmer 0.8s linear infinite;
+  }
+  @keyframes shimmer { to { transform: translateX(100%); } }
+
+  .progress-label {
+    display: flex; justify-content: space-between;
+    font-size: 10px; color: var(--dim); margin-bottom: 6px;
+  }
+
+  /* ====== 命理报告 ====== */
+  .result-area {
+    display: none; margin-top: 10px;
+    border-top: 1px solid var(--border); padding-top: 16px;
+  }
+  .result-area.show { display: block; }
+
+  .score-circle {
+    text-align: center; margin-bottom: 18px;
+  }
+  .score-num {
+    font-size: 56px; font-weight: bold;
+    background: linear-gradient(180deg, var(--gold-bright), var(--red));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+  }
+  .score-label {
+    font-size: 14px; color: var(--dim); margin-top: 4px; letter-spacing: 1px;
+  }
+
+  .fortune-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;
+  }
+  .fortune-card {
+    background: #0f0a18;
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px;
+  }
+  .fortune-card .fc-icon { font-size: 20px; margin-bottom: 2px; }
+  .fortune-card .fc-name { font-size: 11px; color: var(--dim); }
+  .fortune-card .fc-val {
+    font-size: 18px; font-weight: bold; color: var(--text); margin: 2px 0;
+  }
+  .fortune-card .fc-bar-wrap {
+    height: 4px; background: #1a1028; border-radius: 2px; overflow: hidden;
+  }
+  .fortune-card .fc-bar {
+    height: 100%; border-radius: 2px;
+    transition: width 0.8s ease-out;
+  }
+  .fc-bar.wealth { background: var(--gold); }
+  .fc-bar.love { background: var(--red-bright); }
+  .fc-bar.career { background: var(--accent); }
+  .fc-bar.health { background: var(--green); }
+
+  .fortune-text {
+    background: #0f0a18;
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px;
+    font-size: 13px; line-height: 1.8; color: var(--text);
+    margin-bottom: 14px;
+  }
+  .fortune-text .quote { color: var(--gold); font-weight: bold; }
+
+  .lucky-row {
+    display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;
+  }
+  .lucky-tag {
+    background: #0f0a18;
+    border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 14px;
+    font-size: 11px; color: var(--dim);
+    flex: 1; text-align: center; min-width: 60px;
+  }
+  .lucky-tag span { display: block; color: var(--gold); font-size: 15px; font-weight: bold; margin-top: 2px; }
+
+  .disclaimer {
+    font-size: 9px; color: #3a2a4a; text-align: center; margin-top: 8px;
+  }
+
+  .btn-close {
+    display: none; width: 100%; margin-top: 12px; padding: 10px;
+    background: var(--border); border: 1px solid var(--dim);
+    border-radius: 8px; color: var(--text); font-family: inherit;
+    font-size: 13px; cursor: pointer; letter-spacing: 1px;
+  }
+  .btn-close:hover { border-color: var(--gold); color: var(--gold); }
+  .btn-close.show { display: block; }
+
+  /* 响应式 */
+  @media (max-width: 560px) {
+    .container { width: 94vw; padding: 24px 16px; }
+    .modal { width: 94vw; padding: 20px 16px; }
+    .fortune-grid { grid-template-columns: 1fr 1fr; }
+    .score-num { font-size: 44px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 背景装饰 -->
+<div class="bg-symbols" id="bgSymbols"></div>
+<div class="particles" id="particles"></div>
+
+<!-- 主面板 -->
+<div class="container">
+  <div class="header">
+    <span class="icon">🔮</span>
+    <div class="title">量子命理 · AI玄学研究院</div>
+    <div class="subtitle">Quantum Fortune™ v6.6.6 · 天庭云计算中心授权</div>
+  </div>
+
+  <div class="form-group">
+    <label>📛 姓名（必填，法号/网名也行）</label>
+    <input type="text" id="nameInput" placeholder="如：王铁柱" autofocus autocomplete="off">
+  </div>
+
+  <div class="form-row">
+    <div class="form-group">
+      <label>🎂 出生日期（选填，越准越玄）</label>
+      <input type="date" id="birthInput">
+    </div>
+    <div class="form-group">
+      <label>⏰ 出生时辰（选填）</label>
+      <input type="text" id="hourInput" placeholder="如：子时 / 不知道" maxlength="10">
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>💬 你想问的事（选填，心诚则灵）</label>
+    <input type="text" id="questionInput" placeholder="如：什么时候能暴富？">
+  </div>
+
+  <button class="btn-fortune" onclick="startFortune()">🔮 开 始 算 命</button>
+</div>
+
+<!-- 进度弹窗 -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">
+      <span class="spinner"></span> 正在接通天地灵气...
+    </div>
+
+    <div class="log-area" id="logArea"></div>
+
+    <div class="progress-wrap">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div class="progress-label">
+      <span id="progressPercent">0%</span>
+      <span id="progressStage">请稍候...</span>
+    </div>
+
+    <!-- 命理报告 -->
+    <div class="result-area" id="resultArea">
+      <div class="score-circle">
+        <div class="score-num" id="scoreNum">--</div>
+        <div class="score-label" id="scoreLabel"></div>
+      </div>
+
+      <div class="fortune-grid">
+        <div class="fortune-card">
+          <div class="fc-icon">💰</div>
+          <div class="fc-name">财运</div>
+          <div class="fc-val" id="fcWealth">--</div>
+          <div class="fc-bar-wrap"><div class="fc-bar wealth" id="barWealth" style="width:0%"></div></div>
+        </div>
+        <div class="fortune-card">
+          <div class="fc-icon">💕</div>
+          <div class="fc-name">桃花运</div>
+          <div class="fc-val" id="fcLove">--</div>
+          <div class="fc-bar-wrap"><div class="fc-bar love" id="barLove" style="width:0%"></div></div>
+        </div>
+        <div class="fortune-card">
+          <div class="fc-icon">🚀</div>
+          <div class="fc-name">事业运</div>
+          <div class="fc-val" id="fcCareer">--</div>
+          <div class="fc-bar-wrap"><div class="fc-bar career" id="barCareer" style="width:0%"></div></div>
+        </div>
+        <div class="fortune-card">
+          <div class="fc-icon">🍀</div>
+          <div class="fc-name">健康运</div>
+          <div class="fc-val" id="fcHealth">--</div>
+          <div class="fc-bar-wrap"><div class="fc-bar health" id="barHealth" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <div class="fortune-text" id="fortuneText"></div>
+
+      <div class="lucky-row">
+        <div class="lucky-tag">🔢 幸运数字<span id="luckyNum">--</span></div>
+        <div class="lucky-tag">🎨 幸运色<span id="luckyColor">--</span></div>
+        <div class="lucky-tag">🧭 财神方位<span id="luckyDir">--</span></div>
+      </div>
+
+      <div class="disclaimer" id="disclaimer"></div>
+    </div>
+
+    <button class="btn-close" id="btnClose" onclick="closeModal()">🔄 再算一次</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ====== DOM ======
+  var nameInput = document.getElementById('nameInput');
+  var birthInput = document.getElementById('birthInput');
+  var hourInput = document.getElementById('hourInput');
+  var questionInput = document.getElementById('questionInput');
+  var overlay = document.getElementById('overlay');
+  var logArea = document.getElementById('logArea');
+  var progressBar = document.getElementById('progressBar');
+  var progressPercent = document.getElementById('progressPercent');
+  var progressStage = document.getElementById('progressStage');
+  var modalTitle = document.getElementById('modalTitle');
+  var resultArea = document.getElementById('resultArea');
+  var btnClose = document.getElementById('btnClose');
+
+  var isComputing = false;
+  var computeTimer = null;
+  var safetyTimer = null;
+
+  // ====== 背景装饰 ======
+  (function() {
+    var symbols = ['☯', '☰', '☱', '☲', '☳', '☴', '☵', '☶', '☷', '⚊', '⚋', '✧'];
+    var container = document.getElementById('bgSymbols');
+    for (var i = 0; i < 20; i++) {
+      var s = document.createElement('span');
+      s.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+      s.style.cssText =
+        'left:' + (Math.random() * 100) + '%;' +
+        'font-size:' + (Math.random() * 40 + 30) + 'px;' +
+        'animation-duration:' + (Math.random() * 12 + 10) + 's;' +
+        'animation-delay:' + (Math.random() * 8) + 's;';
+      container.appendChild(s);
+    }
+    var pc = document.getElementById('particles');
+    for (var j = 0; j < 30; j++) {
+      var p = document.createElement('div');
+      p.className = 'particle';
+      var size = Math.random() * 2.5 + 1;
+      p.style.cssText =
+        'left:' + (Math.random() * 100) + '%;' +
+        'width:' + size + 'px;height:' + size + 'px;' +
+        'animation-duration:' + (Math.random() * 5 + 5) + 's;' +
+        'animation-delay:' + (Math.random() * 4) + 's;';
+      pc.appendChild(p);
+    }
+  })();
+
+  // ====== 按钮 ======
+  window.closeModal = function() {
+    overlay.classList.remove('active');
+    nameInput.focus();
+  };
+
+  // 回车提交
+  var inputs = [nameInput, birthInput, hourInput, questionInput];
+  inputs.forEach(function(el) {
+    el.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); window.startFortune(); }
+    });
+  });
+
+  // ====== 开始算命 ======
+  window.startFortune = function() {
+    if (isComputing) return;
+    var name = nameInput.value.trim();
+    if (!name) { shakeEl(nameInput); nameInput.focus(); return; }
+
+    isComputing = true;
+
+    // 重置弹窗
+    overlay.classList.add('active');
+    resultArea.classList.remove('show');
+    btnClose.classList.remove('show');
+    progressBar.style.width = '0%';
+    progressPercent.textContent = '0%';
+    progressStage.textContent = '请稍候...';
+    modalTitle.innerHTML = '<span class="spinner"></span> 正在接通天地灵气...';
+    logArea.innerHTML = '';
+
+    var TOTAL_DURATION = 5800; // 5.8秒
+    var TICK_MS = 50;
+
+    var STEPS = [
+      { pct: 0,  msg: '☁️  正在连接天庭云计算中心 (heaven.gov.cn)...' },
+      { pct: 4,  msg: '🔐 天道SSL握手成功 · 已获得玉帝OAuth授权' },
+      { pct: 8,  msg: '📜 加载紫微斗数大模型 v14.7B (147亿命理参数)' },
+      { pct: 13, msg: '🗂️  从地府区块链节点拉取三世因果数据...' },
+      { pct: 18, msg: '⛓️  判官智能合约验证通过 · Gas费: 0.000666 ETH' },
+      { pct: 23, msg: '💘 正在调用月老API查询姻缘线索引...' },
+      { pct: 27, msg: '✓ 月老API返回 200 OK · 红线匹配度 84.7%' },
+      { pct: 32, msg: '🪐 北斗七星定位系统校准中 (7/7)...' },
+      { pct: 37, msg: '📊 启动奇门遁甲蒙特卡洛模拟 × 10⁸ 次迭代' },
+      { pct: 42, msg: '🔮 量子八卦推演引擎启动 · 64卦并行计算' },
+      { pct: 47, msg: '🧬 正在用遗传算法优化八字组合 (第 384 代)...' },
+      { pct: 52, msg: '✓ 易经64卦哈希碰撞验证通过 · SHA-256道' },
+      { pct: 57, msg: '💰 财神爷gRPC节点响应: 财运数据已同步' },
+      { pct: 62, msg: '📡 文昌星Starlink中继器: 文曲星信号+3dB' },
+      { pct: 67, msg: '🧘 风水罗盘联邦学习聚合完成 · 气场梯度已收敛' },
+      { pct: 72, msg: '🌙 太阴太阳双路冗余校验中...' },
+      { pct: 77, msg: '👻 城隍爷边缘节点: 本地守护神数据已缓存' },
+      { pct: 82, msg: '📋 命理结果写入天庭链 · 区块高度 #888888' },
+      { pct: 87, msg: '🔒 太上老君同态加密: 天机不可泄露层已封装' },
+      { pct: 92, msg: '🌟 观世音菩萨AI模型推理: 命中贵人识别完成' },
+      { pct: 96, msg: '✅ 南天门CDN分发: 命理报告已缓存至四大部洲' },
+      { pct: 99, msg: '🎉 算命完毕！正在生成命理报告...' },
+    ];
+
+    var startTime = Date.now();
+    var currentStep = 0;
+    var finished = false;
+
+    function addLog(msg) {
+      var div = document.createElement('div');
+      div.className = 'line';
+      div.textContent = msg;
+      logArea.appendChild(div);
+      logArea.scrollTop = logArea.scrollHeight;
+    }
+
+    function finishFortune() {
+      if (finished) return;
+      finished = true;
+      if (computeTimer) { clearInterval(computeTimer); computeTimer = null; }
+      if (safetyTimer) { clearTimeout(safetyTimer); safetyTimer = null; }
+
+      progressBar.style.width = '100%';
+      progressPercent.textContent = '100%';
+      progressStage.textContent = '命理推演完成 ✓';
+      modalTitle.innerHTML = '🔮 命理报告已生成';
+
+      // 生成搞笑命理报告
+      setTimeout(function() { showFortuneReport(name); }, 350);
+    }
+
+    // 安全网
+    safetyTimer = setTimeout(finishFortune, TOTAL_DURATION + 1500);
+
+    // 主循环
+    computeTimer = setInterval(function() {
+      var elapsed = Date.now() - startTime;
+      var progress = elapsed / TOTAL_DURATION;
+      if (progress > 1) progress = 1;
+      var displayPct = Math.round(progress * 100);
+
+      progressBar.style.width = displayPct + '%';
+      progressPercent.textContent = displayPct + '%';
+
+      while (currentStep < STEPS.length && STEPS[currentStep].pct <= displayPct) {
+        var m = STEPS[currentStep].msg;
+        addLog(m);
+        if (m.indexOf('紫微斗数') !== -1) modalTitle.innerHTML = '<span class="spinner"></span> 📜 加载命理模型中...';
+        if (m.indexOf('月老') !== -1) modalTitle.innerHTML = '<span class="spinner"></span> 💘 查询姻缘中...';
+        if (m.indexOf('奇门遁甲') !== -1) modalTitle.innerHTML = '<span class="spinner"></span> 📊 奇门遁甲推演中...';
+        if (m.indexOf('八卦推演') !== -1) modalTitle.innerHTML = '<span class="spinner"></span> 🔮 量子八卦推演中...';
+        if (m.indexOf('风水罗盘') !== -1) modalTitle.innerHTML = '<span class="spinner"></span> 🧘 风水气场聚合中...';
+        if (m.indexOf('观世音') !== -1) modalTitle.innerHTML = '<span class="spinner"></span> 🌟 命中贵人识别中...';
+        if (m.indexOf('南天门') !== -1) modalTitle.innerHTML = '<span class="spinner"></span> 📡 天界CDN分发中...';
+        currentStep++;
+      }
+
+      if (displayPct < 20) progressStage.textContent = '天地灵气收集中...';
+      else if (displayPct < 40) progressStage.textContent = '天界API调用中...';
+      else if (displayPct < 60) progressStage.textContent = '命理模型推理中...';
+      else if (displayPct < 80) progressStage.textContent = '风水气场聚合中...';
+      else if (displayPct < 95) progressStage.textContent = '天庭链上链确认中...';
+      else if (displayPct < 100) progressStage.textContent = '命理报告生成中...';
+
+      if (progress >= 1) finishFortune();
+    }, TICK_MS);
+  };
+
+  // ====== 生成命理报告 ======
+  function showFortuneReport(name) {
+    // 用名字哈希做伪随机种子，同一个人结果一致
+    var seed = 0;
+    for (var i = 0; i < name.length; i++) {
+      seed = ((seed << 5) - seed) + name.charCodeAt(i);
+      seed |= 0;
+    }
+    function rng() {
+      seed = (seed * 1103515245 + 12345) | 0;
+      return (seed >>> 0) / 4294967296;
+    }
+
+    // 综合运势分数 60-98
+    var score = Math.floor(rng() * 38 + 60);
+    var scoreLabels = [
+      '大吉 · 鸿运当头', '吉 · 顺风顺水', '中吉 · 稳中向好',
+      '小吉 · 渐入佳境', '半吉 · 喜忧参半', '平 · 岁月静好',
+      '凶 · 诸事不宜（建议躺平）', '大凶 · 建议关机重启人生'
+    ];
+    var labelIdx = score >= 90 ? 0 : score >= 82 ? 1 : score >= 74 ? 2 :
+                   score >= 66 ? 3 : score >= 55 ? 4 : score >= 45 ? 5 :
+                   score >= 35 ? 6 : 7;
+
+    document.getElementById('scoreNum').textContent = score + '分';
+    document.getElementById('scoreLabel').textContent = scoreLabels[labelIdx];
+
+    // 四柱运势
+    var wealth = Math.floor(rng() * 40 + 55);
+    var love = Math.floor(rng() * 40 + 50);
+    var career = Math.floor(rng() * 40 + 52);
+    var health = Math.floor(rng() * 35 + 60);
+
+    var wealthWords = ['财源滚滚', '小有进账', '横财就手', '收支平衡', '宜守不宜攻'];
+    var loveWords = ['桃花朵朵', '红鸾星动', '平平淡淡才是真', '缘分在路上了', '旧情勿念'];
+    var careerWords = ['升职加薪', '贵人相助', '稳扎稳打', '韬光养晦', '跳槽良机'];
+    var healthWords = ['龙马精神', '吃嘛嘛香', '注意颈椎', '少熬夜多喝热水', '宜养生泡脚'];
+
+    document.getElementById('fcWealth').textContent = wealth + '% · ' + wealthWords[Math.floor(rng() * 5)];
+    document.getElementById('fcLove').textContent = love + '% · ' + loveWords[Math.floor(rng() * 5)];
+    document.getElementById('fcCareer').textContent = career + '% · ' + careerWords[Math.floor(rng() * 5)];
+    document.getElementById('fcHealth').textContent = health + '% · ' + healthWords[Math.floor(rng() * 5)];
+
+    // 延迟动画进度条
+    setTimeout(function() {
+      document.getElementById('barWealth').style.width = wealth + '%';
+      document.getElementById('barLove').style.width = love + '%';
+      document.getElementById('barCareer').style.width = career + '%';
+      document.getElementById('barHealth').style.width = health + '%';
+    }, 100);
+
+    // 命理评语
+    var question = questionInput.value.trim();
+    var birth = birthInput.value;
+    var hour = hourInput.value.trim();
+
+    var adviceTemplates = [
+      '命主"' + name + '"，天庭链上数据显示，你前世是一只加班的程序猿，今生转世为人依然逃不过996的宿命。不过别担心，根据量子八卦推演结果，你将在' + (rng() > 0.5 ? '明年' : '后年') + '的' + ['春节', '端午', '中秋', '双十一', '双十二', '某个平平无奇的周二'][Math.floor(rng() * 6)] + '前后迎来一波运势高峰。届时请务必打开手机接收天地灵气（记得连WiFi）。',
+      '经太上老君AI模型深度推理，' + name + '的命格属于"佛系修仙型"。你这辈子最大的劫不是情劫也不是钱劫，而是——懒。量子八卦显示你的贵人星座是' + ['产品经理座', '甲方爸爸座', '外卖骑手座', '深夜emo座'][Math.floor(rng() * 4)] + '，建议多出门走走，宅在家里贵人进不来。',
+      '命理报告指出，' + name + '的八字五行缺' + ['金', '钱', '睡', '猫', '奶茶'][Math.floor(rng() * 5)] + '。解决方案：每天对着' + ['余额宝', '基金账户', '钱包', '镜子'][Math.floor(rng() * 4)] + '微笑三次，天地银行会自动打款（到账时间视天界清算系统负载而定，预计3-5个工作日，不含节假日）。',
+      name + '，你的命格极其特殊，在天庭数据库中是百万分之一的"天选打工人"体质。紫微斗数指出：你的人生巅峰将在' + Math.floor(rng() * 20 + 30) + '岁到来，届时请记得给现在的自己发个红包。目前阶段建议多喝热水、少刷短视频、按时吃饭——这些看似无用的行为，将为你攒下宝贵的功德值。',
+      '观世音菩萨AI慈悲模型扫描发现，' + name + '其实是被天庭派下来体验人间的——简称"出差"。所以你偶尔觉得人生艰难是正常的，毕竟这不是你的主场。好消息是：南天门HR系统显示你的调动申请已经审批通过，预计' + Math.floor(rng() * 60 + 10) + '年后可以返回。在此期间请好好享受人间的火锅、奶茶和WiFi。',
+    ];
+
+    var fortuneText = adviceTemplates[Math.floor(rng() * adviceTemplates.length)];
+
+    // 如果用户问了问题，追加针对性回答
+    if (question) {
+      var fakeAnswers = [
+        '关于"' + question + '"的问题，天机不可泄露——不是不想说，是量子八卦模型输出概率低于置信阈值。建议你换个问法再算一次（反正结果也不一样）。',
+        '对于"' + question + '"，天庭智库的回答是：' + ['时机未到', '顺其自然', '可以一试', '建议躺平', '问问你妈'][Math.floor(rng() * 5)] + '。这个答案经过了' + Math.floor(rng() * 9000 + 1000) + '次蒙特卡洛模拟验证，置信度高达 99.9%（自研评测集）。',
+        '"' + question + '"——好问题。文昌星AI给出的建议是：先睡一觉，明天再说。这不是敷衍，这是基于你当前运势的最优解。',
+      ];
+      fortuneText += '\n\n📮 关于你问的「' + question + '」：\n' + fakeAnswers[Math.floor(rng() * fakeAnswers.length)];
+    }
+
+    if (birth) {
+      var age = new Date().getFullYear() - new Date(birth).getFullYear();
+      if (age > 0 && age < 120) {
+        var zodiacAnimals = ['🐀鼠', '🐂牛', '🐅虎', '🐇兔', '🐉龙', '🐍蛇', '🐎马', '🐏羊', '🐒猴', '🐓鸡', '🐕狗', '🐖猪'];
+        var zodiac = zodiacAnimals[(new Date(birth).getFullYear() - 4) % 12];
+        fortuneText += '\n\n📅 系统检测到你属' + zodiac + '，今年' + age + '岁。根据生肖联邦学习模型，属' + zodiac + '的人今年的幸运行为是：' + ['多照镜子提升自信', '远离星座博主', '少看基金收益', '把手机屏保换成锦鲤'][Math.floor(rng() * 4)] + '。';
+      }
+    }
+
+    if (hour) {
+      fortuneText += '\n\n⏰ 你提供的时辰"' + hour + '"已被收录进天庭数据库。不过说实话，现在年轻人还能知道自己的时辰已经很厉害了——就凭这份诚意，玉帝已经给你加了 3 分印象分。';
+    }
+
+    document.getElementById('fortuneText').innerHTML = fortuneText.replace(/\n/g, '<br>');
+
+    // 幸运项
+    var luckyNums = ['6', '8', '42', 'π', '√-1', '404', '3.1415926', '1024', '65535', '0xDEADBEEF'];
+    var luckyColors = ['金色', '紫色', '透明', '五彩斑斓的黑', '原谅绿', '奶茶色', '#FF00FF', '五彩斑斓的白'];
+    var luckyDirs = ['东南偏南 3.2°', '正北方（北极星方向）', '离你最近的奶茶店', '手机信号最强的方向', '财神爷的朋友圈', '西南角 WiFi 路由器旁'];
+
+    document.getElementById('luckyNum').textContent = luckyNums[Math.floor(rng() * luckyNums.length)];
+    document.getElementById('luckyColor').textContent = luckyColors[Math.floor(rng() * luckyColors.length)];
+    document.getElementById('luckyDir').textContent = luckyDirs[Math.floor(rng() * luckyDirs.length)];
+
+    // 免责声明
+    var disclaimers = [
+      '本报告由 GPT-2048 太上老君版生成 · 天庭云计算中心提供算力支持 · 仅供娱乐，切勿当真 · 若预测不准，可能是因为你心不诚',
+      '量子命理AI模型版本 v6.6.6 · 已通过南天门ISO 9001认证 · 算命结果最终解释权归天庭所有 · 对结果不满请联系当地城隍庙',
+      '本次算命消耗天界算力 4.2 万灵 · 碳排放 -0.5kg（吸收天地灵气，实际是负碳的）· 算命有风险，当真需谨慎',
+    ];
+    document.getElementById('disclaimer').textContent = disclaimers[Math.floor(rng() * disclaimers.length)];
+
+    // 展示结果
+    resultArea.classList.add('show');
+    btnClose.classList.add('show');
+    isComputing = false;
+
+    // 滚动到结果区
+    resultArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ====== 抖动动画 ======
+  function shakeEl(el) {
+    el.style.animation = 'none';
+    el.offsetHeight;
+    el.style.animation = 'shake 0.4s ease';
+    setTimeout(function() { el.style.animation = ''; }, 400);
+  }
+
+  var shakeStyle = document.createElement('style');
+  shakeStyle.textContent = '@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}';
+  document.head.appendChild(shakeStyle);
+})();
+</script>
+</body>
+</html>
